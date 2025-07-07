@@ -22,7 +22,6 @@ int count_continuous(const GameCore* game, int x, int y, int dx, int dy, Player 
     return count;
 }
 
-// 简单启发式分数计算：根据某一方向的连续数加分
 int evaluate_point(const GameCore* game, int x, int y, Player player) {
     if (game->board[x][y] != PLAYER_NONE) return 0;
 
@@ -36,18 +35,49 @@ int evaluate_point(const GameCore* game, int x, int y, Player player) {
         int count2 = count_continuous(game, x, y, -dx, -dy, player);
         int total = count1 + count2 + 1;
 
-        switch (total) {
-        case 5: score += 100000; break;
-        case 4: score += 10000; break;
-        case 3: score += 1000; break;
-        case 2: score += 100; break;
-        case 1: score += 10; break;
+        int block1 = 0, block2 = 0;
+
+        int nx1 = x + (count1 + 1) * dx;
+        int ny1 = y + (count1 + 1) * dy;
+        if (nx1 < 0 || nx1 >= BOARD_SIZE || ny1 < 0 || ny1 >= BOARD_SIZE ||
+            game->board[nx1][ny1] != PLAYER_NONE) block1 = 1;
+
+        int nx2 = x - (count2 + 1) * dx;
+        int ny2 = y - (count2 + 1) * dy;
+        if (nx2 < 0 || nx2 >= BOARD_SIZE || ny2 < 0 || ny2 >= BOARD_SIZE ||
+            game->board[nx2][ny2] != PLAYER_NONE) block2 = 1;
+
+        int blocks = block1 + block2;
+
+        // 精细评分策略
+        if (total >= 5) {
+            score += 1000000; // 连五
+        }
+        else if (total == 4 && blocks == 0) {
+            score += 100000; // 活四
+        }
+        else if (total == 4 && blocks == 1) {
+            score += 10000; // 冲四
+        }
+        else if (total == 3 && blocks == 0) {
+            score += 5000; // 活三
+        }
+        else if (total == 3 && blocks == 1) {
+            score += 1000; // 冲三
+        }
+        else if (total == 2 && blocks == 0) {
+            score += 500; // 活二
+        }
+        else if (total == 2 && blocks == 1) {
+            score += 100; // 冲二
+        }
+        else {
+            score += total * 10; // 基础评分
         }
     }
 
     return score;
 }
-
 Position ai_make_move(const GameCore* game) {
     int max_score = INT_MIN;
     Position best_move = { -1, -1 };
