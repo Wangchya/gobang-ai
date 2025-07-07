@@ -1,43 +1,206 @@
-#include "ai.h"
+#include "game_core.h"
 #include <stdlib.h>
+#include <limits.h>
 
-int score_point(char board[GRID_SIZE][GRID_SIZE], int x, int y, char ai, char player) {
+static int directions[4][2] = {
+    {1, 0},  // ºá
+    {0, 1},  // ×Ý
+    {1, 1},  // Õý¶Ô½Ç
+    {1, -1}  // ·´¶Ô½Ç
+};
+
+// ¼ì²éÄ³¸ö·½ÏòÉÏµÄÁ¬ÐøÊý
+int count_continuous(const GameCore* game, int x, int y, int dx, int dy, Player player) {
+    int count = 0;
+    int nx = x + dx, ny = y + dy;
+    while (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE &&
+        game->board[nx][ny] == player) {
+        count++;
+        nx += dx;
+        ny += dy;
+    }
+    return count;
+}
+
+// ¼òµ¥Æô·¢Ê½·ÖÊý¼ÆËã£º¸ù¾ÝÄ³Ò»·½ÏòµÄÁ¬ÐøÊý¼Ó·Ö
+//int evaluate_point(const GameCore* game, int x, int y, Player player) {
+//    if (game->board[x][y] != PLAYER_NONE) return 0;
+//
+//    int score = 0;
+//
+//    for (int d = 0; d < 4; ++d) {
+//        int dx = directions[d][0];
+//        int dy = directions[d][1];
+//
+//        int count1 = count_continuous(game, x, y, dx, dy, player);
+//        int count2 = count_continuous(game, x, y, -dx, -dy, player);
+//        int total = count1 + count2 + 1;
+//
+//        switch (total) {
+//        case 5: score += 100000; break;
+//        case 4: score += 10000; break;
+//        case 3: score += 1000; break;
+//        case 2: score += 100; break;
+//        case 1: score += 10; break;
+//        }
+//    }
+//
+//    return score;
+//}
+//int evaluate_point(const GameCore* game, int x, int y, Player player) {
+//    if (game->board[x][y] != PLAYER_NONE) return 0;
+//
+//    int score = 0;
+//
+//    for (int d = 0; d < 4; ++d) {
+//        int dx = directions[d][0];
+//        int dy = directions[d][1];
+//
+//        int count1 = count_continuous(game, x, y, dx, dy, player);
+//        int count2 = count_continuous(game, x, y, -dx, -dy, player);
+//        int total = count1 + count2 + 1;
+//
+//        int block1 = 0, block2 = 0;
+//
+//        int nx1 = x + (count1 + 1) * dx;
+//        int ny1 = y + (count1 + 1) * dy;
+//        if (nx1 < 0 || nx1 >= BOARD_SIZE || ny1 < 0 || ny1 >= BOARD_SIZE ||
+//            game->board[nx1][ny1] != PLAYER_NONE) block1 = 1;
+//
+//        int nx2 = x - (count2 + 1) * dx;
+//        int ny2 = y - (count2 + 1) * dy;
+//        if (nx2 < 0 || nx2 >= BOARD_SIZE || ny2 < 0 || ny2 >= BOARD_SIZE ||
+//            game->board[nx2][ny2] != PLAYER_NONE) block2 = 1;
+//
+//        int blocks = block1 + block2;
+//
+//        // ¾«Ï¸ÆÀ·Ö²ßÂÔ
+//        if (total >= 5) {
+//            score += 1000000; // Á¬Îå
+//        }
+//        else if (total == 4 && blocks == 0) {
+//            score += 100000; // »îËÄ
+//        }
+//        else if (total == 4 && blocks == 1) {
+//            score += 10000; // ³åËÄ
+//        }
+//        else if (total == 3 && blocks == 0) {
+//            score += 5000; // »îÈý
+//        }
+//        else if (total == 3 && blocks == 1) {
+//            score += 1000; // ³åÈý
+//        }
+//        else if (total == 2 && blocks == 0) {
+//            score += 500; // »î¶þ
+//        }
+//        else if (total == 2 && blocks == 1) {
+//            score += 100; // ³å¶þ
+//        }
+//        else {
+//            score += total * 10; // »ù´¡ÆÀ·Ö
+//        }
+//    }
+//
+//    return score;
+//}
+int evaluate_point(const GameCore* game, int x, int y, Player player) {
+    if (game->board[x][y] != PLAYER_NONE) return 0;
+
+    int live_three_count = 0;
+    int block_three_count = 0;
+    int live_four_count = 0;
+    int block_four_count = 0;
     int score = 0;
-    int dx[] = {1, 0, 1, 1};
-    int dy[] = {0, 1, 1, -1};
 
     for (int d = 0; d < 4; ++d) {
-        int ai_count = 0, player_count = 0;
+        int dx = directions[d][0];
+        int dy = directions[d][1];
 
-        for (int step = -4; step <= 4; ++step) {
-            int nx = x + step * dx[d];
-            int ny = y + step * dy[d];
-            if (nx < 0 || ny < 0 || nx >= GRID_SIZE || ny >= GRID_SIZE) continue;
-            if (board[nx][ny] == ai) ai_count++;
-            if (board[nx][ny] == player) player_count++;
+        int count1 = count_continuous(game, x, y, dx, dy, player);
+        int count2 = count_continuous(game, x, y, -dx, -dy, player);
+        int total = count1 + count2 + 1;
+
+        int block1 = 0, block2 = 0;
+
+        int nx1 = x + (count1 + 1) * dx;
+        int ny1 = y + (count1 + 1) * dy;
+        if (nx1 < 0 || nx1 >= BOARD_SIZE || ny1 < 0 || ny1 >= BOARD_SIZE ||
+            game->board[nx1][ny1] != PLAYER_NONE) block1 = 1;
+
+        int nx2 = x - (count2 + 1) * dx;
+        int ny2 = y - (count2 + 1) * dy;
+        if (nx2 < 0 || nx2 >= BOARD_SIZE || ny2 < 0 || ny2 >= BOARD_SIZE ||
+            game->board[nx2][ny2] != PLAYER_NONE) block2 = 1;
+
+        int blocks = block1 + block2;
+
+        // ÆåÐÍÊ¶±ðÍ³¼Æ
+        if (total >= 5) {
+            return 1000000; // Ö±½Ó³ÉÎå£¬Á¢¼´Âä×Ó
+        }
+        else if (total == 4 && blocks == 0) {
+            live_four_count++;
+        }
+        else if (total == 4 && blocks == 1) {
+            block_four_count++;
+        }
+        else if (total == 3 && blocks == 0) {
+            live_three_count++;
+        }
+        else if (total == 3 && blocks == 1) {
+            block_three_count++;
         }
 
-        score += ai_count * 10 + player_count * 5; // æ”»å‡»æƒé‡é«˜äºŽé˜²å®ˆ
+        // »ù´¡µÃ·Ö£¨¹ÄÀøÑÓÉì£©
+        score += total * 10;
+    }
+
+    // ¼Ó·Ö²ßÂÔ
+    if (live_four_count >= 1) {
+        score += 100000;  // »îËÄ£¬±ØÉ±µã
+    }
+    if (block_four_count >= 1) {
+        score += 10000;
+    }
+    if (live_three_count >= 1) {
+        score += 5000;
+    }
+    if (block_three_count >= 1) {
+        score += 1000;
+    }
+
+    // ×éºÏÉ±·¨¼ì²â
+    if (live_three_count >= 2) {
+        score += 30000;  // Ë«»îÈý£¨¸ßÎ££©
+    }
+    if (live_three_count >= 1 && block_four_count >= 1) {
+        score += 20000;  // ³åËÄ + »îÈý
     }
 
     return score;
 }
 
-void ai_move(char board[GRID_SIZE][GRID_SIZE], int *x, int *y) {
-    int maxScore = -1;
-    char ai = 2;      // AI ä¸‹ç™½æ£‹
-    char player = 1;  // çŽ©å®¶æ˜¯é»‘æ£‹
+Position ai_make_move(const GameCore* game) {
+    int max_score = INT_MIN;
+    Position best_move = { -1, -1 };
 
-    for (int i = 0; i < GRID_SIZE; ++i) {
-        for (int j = 0; j < GRID_SIZE; ++j) {
-            if (board[i][j] == 0) {
-                int score = score_point(board, i, j, ai, player);
-                if (score > maxScore) {
-                    maxScore = score;
-                    *x = i;
-                    *y = j;
-                }
+    for (int x = 0; x < BOARD_SIZE; ++x) {
+        for (int y = 0; y < BOARD_SIZE; ++y) {
+            if (game->board[x][y] != PLAYER_NONE) continue;
+
+            int my_score = evaluate_point(game, x, y, PLAYER_WHITE);
+            int opp_score = evaluate_point(game, x, y, PLAYER_BLACK);
+
+            // ·ÀÊØÓÅÏÈ¼¶ÂÔµÍÓÚ½ø¹¥
+            int total_score = my_score + (opp_score * 0.8);
+
+            if (total_score > max_score) {
+                max_score = total_score;
+                best_move.x = x;
+                best_move.y = y;
             }
         }
     }
+
+    return best_move;
 }
