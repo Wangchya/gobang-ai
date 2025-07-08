@@ -12,6 +12,7 @@
 #define STONE_RADIUS (CELL_SIZE / 2 - 4)
 
 
+
 void draw_filled_circle(SDL_Renderer* renderer, int cx, int cy, int radius) {
     for (int w = 0; w < radius * 2; w++) {
         for (int h = 0; h < radius * 2; h++) {
@@ -124,13 +125,17 @@ menu:
     if (mode == -1) return 0;
 
     if (mode == 3) {
-        game_load(game, "save.txt");
-        mode = (game_get_current_player(game) == PLAYER_BLACK) ? 1 : 2;
+        if (!game_load(game, &mode, "save.txt")) {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Load Failed", "No save file found.", window);
+            goto menu;
+        }
     }
 
     bool running = true;
     bool show_winner = false;
     const char* winner_text = "";
+    bool show_save_msg = false;
+    Uint32 save_msg_time = 0;
 
     SDL_Rect btn_restart = { 100, 760, 200, 60 };
     SDL_Rect btn_quit = { 500, 760, 200, 60 };
@@ -166,7 +171,9 @@ menu:
                         continue;
                     }
                     if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_save)) {
-                        game_save(game, "save.txt");
+                        game_save(game, mode, "save.txt");
+                        show_save_msg = true;
+                        save_msg_time = SDL_GetTicks();
                         continue;
                     }
 
@@ -227,6 +234,13 @@ menu:
         else {
             draw_button(renderer, font, btn_undo, "Undo Move", (SDL_Color) { 120, 180, 250, 255 }, color);
             draw_button(renderer, font, btn_save, "Save", (SDL_Color) { 180, 220, 120, 255 }, color);
+
+            if (show_save_msg && SDL_GetTicks() - save_msg_time < 1500) {
+                draw_button(renderer, font, (SDL_Rect) { 150, 710, 500, 40 }, "Game saved successfully!", (SDL_Color) { 255, 255, 180, 255 }, color);
+            }
+            else {
+                show_save_msg = false;
+            }
         }
 
         SDL_RenderPresent(renderer);
@@ -240,3 +254,4 @@ menu:
     SDL_Quit();
     return 0;
 }
+
