@@ -11,7 +11,7 @@
 #define CELL_SIZE (WINDOW_WIDTH / BOARD_SIZE)
 #define STONE_RADIUS (CELL_SIZE / 2 - 4)
 
-// 绘制实心圆
+
 void draw_filled_circle(SDL_Renderer* renderer, int cx, int cy, int radius) {
     for (int w = 0; w < radius * 2; w++) {
         for (int h = 0; h < radius * 2; h++) {
@@ -78,6 +78,7 @@ int show_menu(SDL_Renderer* renderer, TTF_Font* font) {
 
     SDL_Rect btn_pvp = { WINDOW_WIDTH / 2 - 150, 300, 300, 60 };
     SDL_Rect btn_ai = { WINDOW_WIDTH / 2 - 150, 400, 300, 60 };
+    SDL_Rect btn_load = { WINDOW_WIDTH / 2 - 150, 500, 300, 60 };
 
     while (1) {
         SDL_SetRenderDrawColor(renderer, 255, 220, 180, 255);
@@ -85,6 +86,7 @@ int show_menu(SDL_Renderer* renderer, TTF_Font* font) {
 
         draw_button(renderer, font, btn_pvp, "Player vs Player", (SDL_Color) { 150, 150, 150, 255 }, color);
         draw_button(renderer, font, btn_ai, "Player vs AI", (SDL_Color) { 150, 150, 150, 255 }, color);
+        draw_button(renderer, font, btn_load, "Load Save", (SDL_Color) { 180, 180, 100, 255 }, color);
 
         SDL_RenderPresent(renderer);
 
@@ -97,6 +99,7 @@ int show_menu(SDL_Renderer* renderer, TTF_Font* font) {
 
                 if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_pvp)) return 1;
                 if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_ai)) return 2;
+                if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_load)) return 3;
             }
         }
     }
@@ -115,9 +118,15 @@ int main(int argc, char* argv[]) {
         WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
+menu:
     GameCore* game = game_init();
     int mode = show_menu(renderer, font);
     if (mode == -1) return 0;
+
+    if (mode == 3) {
+        game_load(game, "save.txt");
+        mode = (game_get_current_player(game) == PLAYER_BLACK) ? 1 : 2;
+    }
 
     bool running = true;
     bool show_winner = false;
@@ -126,6 +135,7 @@ int main(int argc, char* argv[]) {
     SDL_Rect btn_restart = { 100, 760, 200, 60 };
     SDL_Rect btn_quit = { 500, 760, 200, 60 };
     SDL_Rect btn_undo = { 300, 760, 200, 60 };
+    SDL_Rect btn_save = { 10, 760, 120, 60 };
 
     while (running) {
         SDL_Event event;
@@ -143,8 +153,8 @@ int main(int argc, char* argv[]) {
                         continue;
                     }
                     if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_quit)) {
-                        running = false;
-                        break;
+                        game_free(game);
+                        goto menu;
                     }
                 }
                 else {
@@ -153,6 +163,10 @@ int main(int argc, char* argv[]) {
                         if (mode == 2 && game_get_current_player(game) == PLAYER_WHITE) {
                             game_undo(game);
                         }
+                        continue;
+                    }
+                    if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_save)) {
+                        game_save(game, "save.txt");
                         continue;
                     }
 
@@ -207,11 +221,12 @@ int main(int argc, char* argv[]) {
         SDL_Color color = { 0, 0, 0, 255 };
         if (show_winner) {
             draw_button(renderer, font, btn_restart, "Restart Game", (SDL_Color) { 100, 200, 100, 255 }, color);
-            draw_button(renderer, font, btn_quit, "Quit Game", (SDL_Color) { 200, 100, 100, 255 }, color);
+            draw_button(renderer, font, btn_quit, "Back to Menu", (SDL_Color) { 200, 100, 100, 255 }, color);
             draw_button(renderer, font, (SDL_Rect) { 30, 20, 300, 40 }, winner_text, (SDL_Color) { 255, 255, 255, 255 }, (SDL_Color) { 200, 0, 0, 255 });
         }
         else {
             draw_button(renderer, font, btn_undo, "Undo Move", (SDL_Color) { 120, 180, 250, 255 }, color);
+            draw_button(renderer, font, btn_save, "Save", (SDL_Color) { 180, 220, 120, 255 }, color);
         }
 
         SDL_RenderPresent(renderer);
