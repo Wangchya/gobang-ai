@@ -1,111 +1,4 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS 1
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <string.h>
-//#include "game_core.h"
-//
-//extern Position ai_make_move(const GameCore* game);
-//
-//void print_board(const GameCore* game) {
-//    printf("   ");
-//    for (int i = 0; i < BOARD_SIZE; i++) printf("%2d", i);
-//    printf("\n");
-//    for (int y = 0; y < BOARD_SIZE; y++) {
-//        printf("%2d ", y);
-//        for (int x = 0; x < BOARD_SIZE; x++) {
-//            Player p = game_get_cell_state(game, x, y);
-//            char c = (p == PLAYER_BLACK) ? 'B' : (p == PLAYER_WHITE) ? 'W' : '.';
-//            printf(" %c", c);
-//        }
-//        printf("\n");
-//    }
-//}
-//
-//int main() {
-//    GameCore* game = game_init();
-//    if (!game) {
-//        printf("游戏初始化失败！\n");
-//        return 1;
-//    }
-//
-//    int mode = 0; // 0 = 双人, 1 = 玩家 vs AI
-//    printf("请选择游戏模式：\n");
-//    printf("1. 玩家 vs 玩家\n");
-//    printf("2. 玩家 vs AI\n");
-//    printf("输入 1 或 2: ");
-//    scanf("%d", &mode);
-//    getchar(); // 吃掉回车
-//
-//    printf("游戏开始！输入格式：x y（坐标），输入 u 悔棋，q 退出。\n\n");
-//
-//    while (1) {
-//        print_board(game);
-//
-//        Player current = game_get_current_player(game);
-//        printf("当前玩家：%s\n", current == PLAYER_BLACK ? "黑棋 (B)" : "白棋 (W)");
-//
-//        if (mode == 2 && current == PLAYER_WHITE) {
-//            printf("AI 正在思考...\n");
-//            Position ai_move = ai_make_move(game);
-//            if (ai_move.x != -1) {
-//                game_place_stone(game, ai_move.x, ai_move.y);
-//            }
-//            else {
-//                printf("AI 无法落子。\n");
-//            }
-//        }
-//        else {
-//            printf("请输入落子位置：");
-//            char input[32];
-//            fgets(input, sizeof(input), stdin);
-//
-//            if (input[0] == 'q') {
-//                printf("退出游戏。\n");
-//                break;
-//            }
-//            if (input[0] == 'u') {
-//                if (game_undo(game)) {
-//                    printf("悔棋成功。\n");
-//                }
-//                else {
-//                    printf("没有可以悔的棋。\n");
-//                }
-//                continue;
-//            }
-//
-//            int x, y;
-//            if (sscanf(input, "%d %d", &x, &y) != 2) {
-//                printf("输入格式错误，请输入两个整数。\n");
-//                continue;
-//            }
-//
-//            if (!game_place_stone(game, x, y)) {
-//                printf("落子失败，请重试。\n");
-//                continue;
-//            }
-//        }
-//
-//        GameState state = game_get_state(game);
-//        if (state == GAME_STATE_BLACK_WIN) {
-//            print_board(game);
-//            printf("黑方胜利！\n");
-//            break;
-//        }
-//        else if (state == GAME_STATE_WHITE_WIN) {
-//            print_board(game);
-//            printf("白方胜利！\n");
-//            break;
-//        }
-//        else if (state == GAME_STATE_DRAW) {
-//            print_board(game);
-//            printf("平局！\n");
-//            break;
-//        }
-//    }
-//
-//    game_free(game);
-//    return 0;
-//}
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include "game_core.h"
@@ -114,13 +7,11 @@
 #include <math.h>
 
 #define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 850 
+#define WINDOW_HEIGHT 850
 #define CELL_SIZE (WINDOW_WIDTH / BOARD_SIZE)
 #define STONE_RADIUS (CELL_SIZE / 2 - 4)
 
-
-
-// 绘制实心圆（模拟圆形棋子）
+// 绘制实心圆
 void draw_filled_circle(SDL_Renderer* renderer, int cx, int cy, int radius) {
     for (int w = 0; w < radius * 2; w++) {
         for (int h = 0; h < radius * 2; h++) {
@@ -162,10 +53,20 @@ void draw_stones(SDL_Renderer* renderer, GameCore* game) {
     }
 }
 
-void draw_text(SDL_Renderer* renderer, TTF_Font* font, const char* msg, int x, int y, SDL_Color color) {
-    SDL_Surface* surface = TTF_RenderText_Blended(font, msg, color);
+void draw_button(SDL_Renderer* renderer, TTF_Font* font, SDL_Rect btn, const char* text, SDL_Color bg_color, SDL_Color text_color) {
+    SDL_SetRenderDrawColor(renderer, bg_color.r, bg_color.g, bg_color.b, 255);
+    SDL_RenderFillRect(renderer, &btn);
+
+    SDL_Surface* surface = TTF_RenderText_Blended(font, text, text_color);
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-    SDL_Rect dst = { x, y, surface->w, surface->h };
+
+    SDL_Rect dst = {
+        btn.x + (btn.w - surface->w) / 2,
+        btn.y + (btn.h - surface->h) / 2,
+        surface->w,
+        surface->h
+    };
+
     SDL_RenderCopy(renderer, texture, NULL, &dst);
     SDL_FreeSurface(surface);
     SDL_DestroyTexture(texture);
@@ -182,12 +83,8 @@ int show_menu(SDL_Renderer* renderer, TTF_Font* font) {
         SDL_SetRenderDrawColor(renderer, 255, 220, 180, 255);
         SDL_RenderClear(renderer);
 
-        draw_text(renderer, font, "Gomoku", WINDOW_WIDTH / 2 - 120, 180, color);
-        SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255);
-        SDL_RenderFillRect(renderer, &btn_pvp);
-        SDL_RenderFillRect(renderer, &btn_ai);
-        draw_text(renderer, font, "Player vs Player", btn_pvp.x + 40, btn_pvp.y + 15, color);
-        draw_text(renderer, font, "Player vs AI", btn_ai.x + 60, btn_ai.y + 15, color);
+        draw_button(renderer, font, btn_pvp, "Player vs Player", (SDL_Color) { 150, 150, 150, 255 }, color);
+        draw_button(renderer, font, btn_ai, "Player vs AI", (SDL_Color) { 150, 150, 150, 255 }, color);
 
         SDL_RenderPresent(renderer);
 
@@ -198,15 +95,8 @@ int show_menu(SDL_Renderer* renderer, TTF_Font* font) {
                 int mx = e.button.x;
                 int my = e.button.y;
 
-                if (mx >= btn_pvp.x && mx <= btn_pvp.x + btn_pvp.w &&
-                    my >= btn_pvp.y && my <= btn_pvp.y + btn_pvp.h) {
-                    return 1;
-                }
-
-                if (mx >= btn_ai.x && mx <= btn_ai.x + btn_ai.w &&
-                    my >= btn_ai.y && my <= btn_ai.y + btn_ai.h) {
-                    return 2;
-                }
+                if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_pvp)) return 1;
+                if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_ai)) return 2;
             }
         }
     }
@@ -215,13 +105,13 @@ int show_menu(SDL_Renderer* renderer, TTF_Font* font) {
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
-    TTF_Font* font = TTF_OpenFont("assets/font.ttf", 32);
+    TTF_Font* font = TTF_OpenFont("assets/font.ttf", 28);
     if (!font) {
         printf("字体加载失败: %s\n", TTF_GetError());
         return 1;
     }
 
-    SDL_Window* window = SDL_CreateWindow("gomoku", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+    SDL_Window* window = SDL_CreateWindow("Gomoku", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
@@ -233,9 +123,9 @@ int main(int argc, char* argv[]) {
     bool show_winner = false;
     const char* winner_text = "";
 
-    SDL_Rect btn_restart = { 100, 760, 200, 50 };
-    SDL_Rect btn_quit = { 500, 760, 200, 50 };
-    SDL_Rect btn_undo = { 300, 760, 200, 50 };
+    SDL_Rect btn_restart = { 100, 760, 200, 60 };
+    SDL_Rect btn_quit = { 500, 760, 200, 60 };
+    SDL_Rect btn_undo = { 300, 760, 200, 60 };
 
     while (running) {
         SDL_Event event;
@@ -259,9 +149,9 @@ int main(int argc, char* argv[]) {
                 }
                 else {
                     if (SDL_PointInRect(&(SDL_Point) { mx, my }, & btn_undo)) {
-                        game_undo(game); // 玩家悔棋
+                        game_undo(game);
                         if (mode == 2 && game_get_current_player(game) == PLAYER_WHITE) {
-                            game_undo(game); // AI 也悔棋
+                            game_undo(game);
                         }
                         continue;
                     }
@@ -316,20 +206,12 @@ int main(int argc, char* argv[]) {
 
         SDL_Color color = { 0, 0, 0, 255 };
         if (show_winner) {
-            draw_text(renderer, font, winner_text, 30, 30, (SDL_Color) { 200, 0, 0, 255 });
-
-            SDL_SetRenderDrawColor(renderer, 100, 200, 100, 255);
-            SDL_RenderFillRect(renderer, &btn_restart);
-            draw_text(renderer, font, "Restart game", btn_restart.x + 30, btn_restart.y + 10, color);
-
-            SDL_SetRenderDrawColor(renderer, 200, 100, 100, 255);
-            SDL_RenderFillRect(renderer, &btn_quit);
-            draw_text(renderer, font, "Quit game", btn_quit.x + 40, btn_quit.y + 10, color);
+            draw_button(renderer, font, btn_restart, "Restart Game", (SDL_Color) { 100, 200, 100, 255 }, color);
+            draw_button(renderer, font, btn_quit, "Quit Game", (SDL_Color) { 200, 100, 100, 255 }, color);
+            draw_button(renderer, font, (SDL_Rect) { 30, 20, 300, 40 }, winner_text, (SDL_Color) { 255, 255, 255, 255 }, (SDL_Color) { 200, 0, 0, 255 });
         }
         else {
-            SDL_SetRenderDrawColor(renderer, 120, 180, 250, 255);
-            SDL_RenderFillRect(renderer, &btn_undo);
-            draw_text(renderer, font, "Undo move", btn_undo.x + 70, btn_undo.y + 10, color);
+            draw_button(renderer, font, btn_undo, "Undo Move", (SDL_Color) { 120, 180, 250, 255 }, color);
         }
 
         SDL_RenderPresent(renderer);
