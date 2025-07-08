@@ -162,29 +162,21 @@ Player game_get_cell_state(const GameCore* game, int x, int y) {
 }
 
 // 保存游戏状态到文件
-int game_save(const GameCore* game, const char* filename) {
+int game_save(const GameCore* game, int mode, const char* filename) {
     FILE* file = fopen(filename, "wb");
-    if (!file) {
-        return 0;
-    }
-
-    // 写入游戏状态
+    if (!file) return 0;
+    fwrite(&mode, sizeof(int), 1, file);
     fwrite(game, sizeof(GameCore), 1, file);
-
     fclose(file);
     return 1;
 }
 
-// 从文件加载游戏状态
-int game_load(GameCore* game, const char* filename) {
+// 从文件加载游戏状态（包含模式）
+int game_load(GameCore* game, int* mode, const char* filename) {
     FILE* file = fopen(filename, "rb");
-    if (!file) {
-        return 0;
-    }
-
-    // 读取游戏状态
+    if (!file) return 0;
+    fread(mode, sizeof(int), 1, file);
     size_t read = fread(game, sizeof(GameCore), 1, file);
     fclose(file);
-
     return (read == 1);
 }

@@ -59,12 +59,12 @@ Player game_get_current_player(const GameCore* game);
 Player game_get_cell_state(const GameCore* game, int x, int y);
 
 // 保存游戏状态到文件
-int game_save(const GameCore* game, const char* filename);
+int game_save(const GameCore* game, int mode, const char* filename);
 
 // 从文件加载游戏状态
-int game_load(GameCore* game, const char* filename);
+int game_load(GameCore* game, int* mode, const char* filename);
 
-// AI落子接口 (需由AI模块实现)
+// AI落子接口
 Position ai_make_move(const GameCore* game);
 
 
